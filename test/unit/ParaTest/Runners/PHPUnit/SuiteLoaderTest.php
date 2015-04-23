@@ -265,4 +265,14 @@ class SuiteLoaderTest extends \TestBase
         $testMethod = $tests[1];
         $this->assertEquals($testMethod->getName(), 'testTwoA|testTwoBDependsOnA');
     }
+
+    public function testLoadTestsuiteWithDirectoriesExcluded()
+    {
+        $options = new Options(array('configuration' => $this->fixture('phpunit-excludedir.xml'), 'testsuite' => 'ParaTest Fixtures'));
+        $loader = new SuiteLoader($options);
+        $loader->load();
+        $files = $this->getObjectValue($loader, 'files');
+
+        $this->assertEquals(3, sizeof($files));
+    }
 }

@@ -94,15 +94,17 @@ class SuiteLoader
         if ($path) {
             $this->loadPath($path);
         } elseif (isset($this->options->testsuite) && $this->options->testsuite) {
+            $excludedDirectories = $configuration->getExcludedDirectoriesBySuiteName($this->options->testsuite);
             foreach ($configuration->getSuiteByName($this->options->testsuite) as $suite) {
                 foreach ($suite as $suitePath) {
-                    $this->loadPath($suitePath);
+                    $this->loadPath($suitePath, $excludedDirectories);
                 }
             }
         } elseif ($suites = $configuration->getSuites()) {
-            foreach ($suites as $suite) {
+            foreach ($suites as $name => $suite) {
+                $excludedDirectories = $configuration->getExcludedDirectoriesBySuiteName($name);
                 foreach ($suite as $suitePath) {
-                    $this->loadPath($suitePath);
+                    $this->loadPath($suitePath, $excludedDirectories);
                 }
             }
         }
@@ -123,7 +125,7 @@ class SuiteLoader
      * @param $path
      * @throws \InvalidArgumentException
      */
-    private function loadPath($path)
+    private function loadPath($path, $excludedDirectories = array())
     {
         $path = $path ? : $this->options->path;
         if ($path instanceof SuitePath) {
@@ -136,7 +138,7 @@ class SuiteLoader
             throw new \InvalidArgumentException("$path is not a valid directory or file");
         }
         if (is_dir($path)) {
-            $this->loadDir($path, $pattern);
+            $this->loadDir($path, $pattern, $excludedDirectories);
         } elseif (file_exists($path)) {
             $this->loadFile($path);
         }
@@ -148,11 +150,11 @@ class SuiteLoader
      * @param string $path
      * @param string $pattern
      */
-    private function loadDir($path, $pattern = self::TEST_PATTERN)
+    private function loadDir($path, $pattern = self::TEST_PATTERN, $excludedDirectories = array())
     {
         $files = scandir($path);
         foreach ($files as $file) {
-            $this->tryLoadTests($path . DIRECTORY_SEPARATOR . $file, $pattern);
+            $this->tryLoadTests($path . DIRECTORY_SEPARATOR . $file, $pattern, $excludedDirectories);
         }
     }
 
@@ -172,8 +174,12 @@ class SuiteLoader
      * @param string $path
      * @param string $pattern regular expression for matching file names
      */
-    private function tryLoadTests($path, $pattern = self::TEST_PATTERN)
+    private function tryLoadTests($path, $pattern = self::TEST_PATTERN, $excludedDirectories = array())
     {
+        if ($this->isPathExcluded($path, $excludedDirectories)) {
+            return;
+        }
+
         if (preg_match($pattern, $path)) {
             $this->files[] = $path;
         }
@@ -181,6 +187,16 @@ class SuiteLoader
         if (!preg_match(self::$dotPattern, $path) && is_dir($path)) {
             $this->loadDir($path, $pattern);
         }
+    }
+
+    private function isPathExcluded($path, $excludedDirectories = array())
+    {
+        foreach ($excludedDirectories as $dir) {
+            if (false !== strpos($path, $dir)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

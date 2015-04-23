@@ -123,6 +123,23 @@ class Configuration
         return $suites;
     }
 
+    public function getExcludedDirectoriesBySuiteName($suiteName)
+    {
+        $excluded = array();
+        if (!$this->xml) {
+            return $excluded;
+        }
+        $nodes = $this->xml->xpath(sprintf('//testsuite[@name="%s"]', $suiteName));
+        foreach ($nodes as $node) {
+            foreach ($node->exclude as $directory) {
+                foreach ($this->getSuitePaths((string) $directory) as $path) {
+                    $excluded[] = $path;
+                }
+            }
+        }
+        return $excluded;
+    }
+
     /**
      * Return the path of the directory
      * that contains the phpunit configuration
